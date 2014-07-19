@@ -1,0 +1,24 @@
+{
+  "name": "pimatic-sensortag",
+  "description": "Gets Information from SensorTag as devices",
+  "author": "Jose Castro Leon <josecastroleon@gmail.com>",
+  "main": "sensortag",
+  "files": [
+    "sensortag.coffee",
+    "README.md",
+    "sensortag-config-schema.coffee"
+  ],
+  "version": "0.0.1",
+  "homepage": "http://your-plugin-website",
+  "private": true,
+  "dependencies": {
+    "sensortag": "^0.1.8"
+  },
+  "peerDependencies": {
+    "pimatic": "0.7.*"
+  },
+  "engines": {
+    "node": ">0.8.x",
+    "npm": ">1.1.x"
+  }
+}
