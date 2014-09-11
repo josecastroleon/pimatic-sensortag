@@ -1,117 +1,81 @@
 module.exports = (env) ->
+  Promise = env.require 'bluebird'
   convict = env.require "convict"
-  Q = env.require 'q'
   assert = env.require 'cassert'
   
   SensorTag = require "sensortag"
 
   class SensorTagPlugin extends env.plugins.Plugin
     init: (app, @framework, @config) =>
-      @interval = config.interval
+      deviceConfigDef = require("./device-config-schema")
 
-      SensorTag.discover (sensorTag) =>
-        sensorTag.on "disconnect", =>
-          console.log "disconnected!"
-        
-        sensorTag.connect =>
-          sensorTag.discoverServicesAndCharacteristics =>
-            setInterval (=>
+      @framework.deviceManager.registerDeviceClass("SensorTagDevice", {
+        configDef: deviceConfigDef.SensorTagDevice,
+        createCallback: (config) => new SensorTagDevice(config)
+      })
+
+  class SensorTagDevice extends env.devices.Sensor
+    attributes:
+      temperature:
+        description: "the messured temperature"
+        type: "number"
+        unit: '°C'
+      humidity:
+        description: "The actual degree of Humidity"
+        type: "number"
+        unit: '%'
+      pressure:
+        description: "The actual pressure"
+        type: "number"
+        unit: 'mbar'
+
+    temperature: 0.0
+    humidity: 0.0
+    pressure: 0.0
+
+    constructor: (@config) ->
+      @id = config.id
+      @name = config.name
+      @interval = config.interval
+      @timeout = config.timeout
+      @uuid = config.uuid
+      super()
+
+      setTimeout(=>
+        env.logger.debug "launching 1st request for device #{@name} after #{@timeout}"
+        @requestSensorTagData(@uuid)
+        setInterval( =>
+          env.logger.debug "launching request for device #{@name} after #{@interval}"
+          @requestSensorTagData(@uuid)
+        , @interval
+        )
+      , @timeout
+      )
+
+    requestSensorTagData: (uuid) =>
+      SensorTag.discover (sensorTag, uuid) =>
+        if sensorTag.uuid != @uuid
+          env.logger.debug "uuid discovered does not match for device #{@name} retrying"
+          @requestSensorTagData(@uuid)
+        else
+          env.logger.debug "uuid discovered matches for device #{@name} connecting"
+          sensorTag.connect =>
+            env.logger.debug "device #{@name} connected"
+            sensorTag.discoverServicesAndCharacteristics =>
               sensorTag.enableBarometricPressure =>
                 sensorTag.enableHumidity =>
                   sensorTag.readHumidity (temperature, humidity) =>
-                    @emit "sensortag-temperature", temperature.toFixed(1)
-                    @emit "sensortag-humidity", humidity.toFixed(1)
+                    @emit "temperature", Number temperature.toFixed(1)
+                    @emit "humidity", Number humidity.toFixed(1)
                     sensorTag.disableHumidity =>
                       sensorTag.readBarometricPressure (pressure) =>
-                        @emit "sensortag-pressure", pressure.toFixed(1)
-            ), @interval
+                        @emit "pressure", Number pressure.toFixed(1)
+                        sensorTag.disconnect =>
+                          env.logger.debug "device #{@name} disconnected"
 
-    createDevice: (config) =>
-      switch config.class
-        when "SensorTagTemperature"
-          @framework.registerDevice(new SensorTagTemperature config)
-          return true
-        when "SensorTagHumidity"
-          @framework.registerDevice(new SensorTagHumidity config)
-          return true
-        when "SensorTagPressure"
-          @framework.registerDevice(new SensorTagPressure config)
-          return true
-        when "SensorTagBattery"
-          @framework.registerDevice(new SensorTagBattery config)
-          return true
-        else
-          return false
-
-  class SensorTagTemperature extends env.devices.TemperatureSensor
-    temperature: null
-
-    constructor: (@config) ->
-      @id = config.id
-      @name = config.name
-      super()
-      plugin.on "sensortag-temperature", (temperature) =>
-        @temperature = temperature
-        @emit "temperature", temperature
-
-    getTemperature: -> Q(@temperature)
-
-  class SensorTagHumidity extends env.devices.Sensor
-    attributes:
-      humidity:
-        description: "The actual degree of Humidity"
-        type: Number
-        unit: '%'
-        
-    humidity: null
-        
-    constructor: (@config) ->
-      @id = config.id
-      @name = config.name
-      super()
-      plugin.on "sensortag-humidity", (humidity) =>
-        @humidity = humidity
-        @emit "humidity", humidity
-      
-    getHumidity: -> Q(@humidity)
-
-  class SensorTagPressure extends env.devices.Sensor
-    attributes:
-      pressure:
-        description: "The actual pressure"
-        type: Number
-        unit: 'mbar'
-
-    pressure: null
-
-    constructor: (@config) ->
-      @id = config.id
-      @name = config.name
-      super()
-      plugin.on "sensortag-pressure", (pressure) =>
-        @pressure = pressure
-        @emit "pressure", pressure
-
-    getPressure: -> Q(@pressure)
-
-  class SensorTagBattery extends env.devices.Sensor
-    attributes:
-      battery:
-        description: "The actual value of Battery"
-        type: Number
-        unit: '%'
-
-    battery: null
-
-    constructor: (@config) ->
-      @id = config.id
-      @name = config.name
-      super()
-      plugin.on "sensortag-battery", (battery) =>
-        @battery = battery
-        @emit "battery", battery
-
-    getBattery: -> Q(@battery)
+    getTemperature: -> Promise.resolve @temperature
+    getHumidity: -> Promise.resolve @humidity
+    getPressure: -> Promise.resolve @pressure
 
   plugin = new SensorTagPlugin
   return plugin

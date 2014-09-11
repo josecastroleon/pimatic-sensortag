@@ -11,11 +11,12 @@
   "version": "0.0.1",
   "homepage": "http://your-plugin-website",
   "private": true,
+  "configSchema": "sensortag-config-schema.coffee",
   "dependencies": {
     "sensortag": "^0.1.8"
   },
   "peerDependencies": {
-    "pimatic": "0.7.*"
+    "pimatic": "0.8.*"
   },
   "engines": {
     "node": ">0.8.x",

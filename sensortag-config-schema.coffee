@@ -1,9 +1,5 @@
 module.exports = {
-  title: "Weather"
+  title: "SensorTag"
   type: "object"
-  properties:
-    interval:
-      description: "Interval between requests"
-      format: Number
-      default: 60000
+  properties: {}
 }

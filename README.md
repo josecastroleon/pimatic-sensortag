@@ -8,26 +8,18 @@ Configuration
 Add the plugin to the plugin section:
 
     {
-      "plugin": "sensortag",
+      "plugin": "sensortag"
+    },
+
+Then add the device entry for your device into the devices section:
+
+    {
+      "id": "sensortag-room",
+      "class": "SensorTagDevice",
+      "name": "Bedroom",
+      "uuid": "01234567890a",
+      "timeout": 0,
       "interval": 60000
-    },
-
-Then add several sensors for your device to the devices section:
-
-    {
-      "id": "sensortag-temperature",
-      "class": "SensorTagTemperature",
-      "name": "Temperature"
-    },
-    {
-      "id": "sensortag-humidity",
-      "class": "SensorTagHumidity",
-      "name": "Humidity"
-    },
-    {
-      "id": "sensortag-pressure",
-      "class": "SensorTagPressure",
-      "name": "Pressure"
-    },
+    }
 
 Then you can add the items into the mobile frontend
