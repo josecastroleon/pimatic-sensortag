@@ -40,38 +40,36 @@ module.exports = (env) ->
       @timeout = config.timeout
       @uuid = config.uuid
       super()
-
       setTimeout(=>
         env.logger.debug "launching 1st request for device #{@name} after #{@timeout}"
         @requestSensorTagData(@uuid)
-        setInterval( =>
-          env.logger.debug "launching request for device #{@name} after #{@interval}"
-          @requestSensorTagData(@uuid)
-        , @interval
-        )
-      , @timeout
-      )
+      , @timeout)
 
-    requestSensorTagData: (uuid) =>
+    discoverAndConnectSensorTag: (uuid) =>
       SensorTag.discover (sensorTag, uuid) =>
         if sensorTag.uuid != @uuid
           env.logger.debug "uuid discovered does not match for device #{@name} retrying"
-          @requestSensorTagData(@uuid)
+          @discoverAndConnectSensorTagData @uuid
         else
           env.logger.debug "uuid discovered matches for device #{@name} connecting"
           sensorTag.connect =>
             env.logger.debug "device #{@name} connected"
             sensorTag.discoverServicesAndCharacteristics =>
-              sensorTag.enableBarometricPressure =>
-                sensorTag.enableHumidity =>
-                  sensorTag.readHumidity (temperature, humidity) =>
-                    @emit "temperature", Number temperature.toFixed(1)
-                    @emit "humidity", Number humidity.toFixed(1)
-                    sensorTag.disableHumidity =>
-                      sensorTag.readBarometricPressure (pressure) =>
-                        @emit "pressure", Number pressure.toFixed(1)
-                        sensorTag.disconnect =>
-                          env.logger.debug "device #{@name} disconnected"
+              env.logger.debug "launching read on device #{@name}¨
+              @readSensorTagData
+              setInterval( =>
+                env.logger.debug "launching read for device #{@name} after #{@interval}"
+              , @interval)
+
+     readSensorTagData: => 
+       sensorTag.enableBarometricPressure =>
+         sensorTag.enableHumidity =>
+           sensorTag.readHumidity (temperature, humidity) =>
+             @emit "temperature", Number temperature.toFixed(1)
+             @emit "humidity", Number humidity.toFixed(1)
+             sensorTag.disableHumidity =>
+               sensorTag.readBarometricPressure (pressure) =>
+                 @emit "pressure", Number pressure.toFixed(1)
 
     getTemperature: -> Promise.resolve @temperature
     getHumidity: -> Promise.resolve @humidity
