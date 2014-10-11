@@ -8,8 +8,8 @@
     "README.md",
     "sensortag-config-schema.coffee"
   ],
-  "version": "0.0.1",
-  "homepage": "http://your-plugin-website",
+  "version": "0.8.0",
+  "homepage": "https://github.com/josecastroleon/pimatic-sensortag",
   "private": true,
   "configSchema": "sensortag-config-schema.coffee",
   "dependencies": {
