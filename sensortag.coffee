@@ -28,10 +28,21 @@ module.exports = (env) ->
         description: "The actual pressure"
         type: "number"
         unit: 'mbar'
+      left:
+        description: "State of left button"
+        type: "boolean"
+        labels: ['on','off']
+      right:
+        description: "State of right button"
+        type: "boolean"
+        labels: ['on','off']
+
 
     temperature: 0.0
     humidity: 0.0
     pressure: 0.0
+    left: false
+    right: false
 
     constructor: (@config) ->
       @id = config.id
@@ -42,38 +53,45 @@ module.exports = (env) ->
       super()
       setTimeout(=>
         env.logger.debug "launching 1st request for device #{@name} after #{@timeout}"
-        @requestSensorTagData(@uuid)
+        @discoverAndConnectSensorTag @uuid
       , @timeout)
 
     discoverAndConnectSensorTag: (uuid) =>
       SensorTag.discover (sensorTag, uuid) =>
         if sensorTag.uuid != @uuid
           env.logger.debug "uuid discovered does not match for device #{@name} retrying"
-          @discoverAndConnectSensorTagData @uuid
+          @discoverAndConnectSensorTag @uuid
         else
           env.logger.debug "uuid discovered matches for device #{@name} connecting"
           sensorTag.connect =>
             env.logger.debug "device #{@name} connected"
             sensorTag.discoverServicesAndCharacteristics =>
-              env.logger.debug "launching read on device #{@name}¨
-              @readSensorTagData
+              env.logger.debug "launching read on device #{@name}"
+              @readSensorTagData sensorTag
               setInterval( =>
                 env.logger.debug "launching read for device #{@name} after #{@interval}"
+                @readSensorTagData sensorTag
               , @interval)
 
-     readSensorTagData: => 
-       sensorTag.enableBarometricPressure =>
-         sensorTag.enableHumidity =>
-           sensorTag.readHumidity (temperature, humidity) =>
-             @emit "temperature", Number temperature.toFixed(1)
-             @emit "humidity", Number humidity.toFixed(1)
-             sensorTag.disableHumidity =>
-               sensorTag.readBarometricPressure (pressure) =>
-                 @emit "pressure", Number pressure.toFixed(1)
+     readSensorTagData: (sensorTag) => 
+       sensorTag.on "simpleKeyChange", (left, right) =>
+         @emit "left", Boolean left
+         @emit "right", Boolean right
+       sensorTag.notifySimpleKey =>
+         sensorTag.enableBarometricPressure =>
+           sensorTag.enableHumidity =>
+             sensorTag.readHumidity (temperature, humidity) =>
+               @emit "temperature", Number temperature.toFixed(1)
+               @emit "humidity", Number humidity.toFixed(1)
+               sensorTag.disableHumidity =>
+                 sensorTag.readBarometricPressure (pressure) =>
+                   @emit "pressure", Number pressure.toFixed(1)
 
     getTemperature: -> Promise.resolve @temperature
     getHumidity: -> Promise.resolve @humidity
     getPressure: -> Promise.resolve @pressure
+    getLeft: -> Promise.resolve @left
+    getRight: -> Promise.resolve @right
 
   plugin = new SensorTagPlugin
   return plugin
