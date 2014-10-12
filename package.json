@@ -10,7 +10,6 @@
   ],
   "version": "0.8.1",
   "homepage": "https://github.com/josecastroleon/pimatic-sensortag",
-  "private": true,
   "configSchema": "sensortag-config-schema.coffee",
   "dependencies": {
     "sensortag": "^0.1.8"
