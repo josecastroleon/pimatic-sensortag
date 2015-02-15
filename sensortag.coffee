@@ -4,6 +4,8 @@ module.exports = (env) ->
   assert = env.require 'cassert'
   
   SensorTag = require "sensortag"
+  noble = require "noble"
+  events = require "events"
 
   class SensorTagPlugin extends env.plugins.Plugin
     init: (app, @framework, @config) =>
@@ -13,6 +15,21 @@ module.exports = (env) ->
         configDef: deviceConfigDef.SensorTagDevice,
         createCallback: (config) => new SensorTagDevice(config)
       })
+
+      # Promise that is resolved when the connection is established
+      @noble = require "noble"
+      setInterval( =>
+        @noble.startScanning([],true)
+      , 10000)
+
+      @noble.on 'discover', (peripheral) =>
+        if (peripheral.advertisement.localName == 'SensorTag' or peripheral.advertisement.localName == 'TI BLE Sensor Tag')
+          @noble.stopScanning()
+          @emit "discover-"+peripheral.uuid, peripheral
+
+      @noble.on 'stateChange', (state) =>
+        if state == 'poweredOn'
+          @noble.startScanning([],true)
 
   class SensorTagDevice extends env.devices.Sensor
     attributes:
@@ -50,47 +67,47 @@ module.exports = (env) ->
       @interval = config.interval
       @timeout = config.timeout
       @uuid = config.uuid
+      @peripheral = null
+      @connected = false
       super()
-      @discoverAndConnectSensorTag @uuid
+      plugin.once("discover-#{@uuid}", (peripheral) =>
+        env.logger.debug "device #{@name} found"
+        @connect peripheral
+      )
 
-    discoverAndConnectSensorTag: (uuid) =>
-      setTimeout(=>
-        env.logger.debug "launching 1st request for device #{@name} after #{@timeout}"
-        SensorTag.discover (sensorTag, uuid) =>
-          if sensorTag.uuid != @uuid
-            env.logger.debug "uuid discovered does not match for device #{@name} retrying"
-            @discoverAndConnectSensorTag @uuid
-          else
-            env.logger.debug "uuid discovered matches for device #{@name} connecting"
-            sensorTag.connect =>
-              env.logger.debug "device #{@name} connected"
-              sensorTag.discoverServicesAndCharacteristics =>
-                env.logger.debug "launching read on device #{@name}"
-                @readSensorTagData sensorTag
-                setInterval( =>
-                  env.logger.debug "launching read for device #{@name} after #{@interval}"
-                  @readSensorTagData sensorTag
-                , @interval)
-      , @timeout) 
+    connect: (peripheral) =>
+      @peripheral = peripheral
+      sensorTag = new SensorTag(peripheral)
+      if @connected == false
+        sensorTag.connect =>
+          connected = true
+          env.logger.debug "device #{@name} connected"
+          sensorTag.discoverServicesAndCharacteristics =>
+            env.logger.debug "launching read on device #{@name}"
+            @readSensorTagData sensorTag
+            setInterval( =>
+              env.logger.debug "launching read for device #{@name} after #{@interval}"
+              @readSensorTagData sensorTag
+            , @interval)
 
-     readSensorTagData: (sensorTag) => 
-       sensorTag.on "simpleKeyChange", (left, right) =>
-         @emit "left", Boolean left
-         @emit "right", Boolean right
-       sensorTag.notifySimpleKey =>
-       sensorTag.enableBarometricPressure =>
-         setTimeout(=>
-           sensorTag.readBarometricPressure (pressure) =>
-             @emit "pressure", Number pressure.toFixed(1)
-             sensorTag.disableBarometricPressure
-         , 1000)         
-       sensorTag.enableHumidity =>
-         setTimeout(=>
-           sensorTag.readHumidity (temperature, humidity) =>
-             @emit "temperature", Number temperature.toFixed(1)
-             @emit "humidity", Number humidity.toFixed(1)
-             sensorTag.disableHumidity =>
-         , 1000)
+    readSensorTagData: (sensorTag) => 
+      sensorTag.on "simpleKeyChange", (left, right) =>
+        @emit "left", Boolean left
+        @emit "right", Boolean right
+      sensorTag.notifySimpleKey =>
+      sensorTag.enableBarometricPressure =>
+        setTimeout(=>
+          sensorTag.readBarometricPressure (pressure) =>
+            @emit "pressure", Number pressure.toFixed(1)
+            sensorTag.disableBarometricPressure
+        , 1000)         
+      sensorTag.enableHumidity =>
+        setTimeout(=>
+          sensorTag.readHumidity (temperature, humidity) =>
+            @emit "temperature", Number temperature.toFixed(1)
+            @emit "humidity", Number humidity.toFixed(1)
+            sensorTag.disableHumidity =>
+        , 1000)
 
     getTemperature: -> Promise.resolve @temperature
     getHumidity: -> Promise.resolve @humidity

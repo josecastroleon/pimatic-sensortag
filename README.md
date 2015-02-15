@@ -18,7 +18,6 @@ Then add the device entry for your device into the devices section:
       "class": "SensorTagDevice",
       "name": "Bedroom",
       "uuid": "01234567890a",
-      "timeout": 0,
       "interval": 60000
     }
 

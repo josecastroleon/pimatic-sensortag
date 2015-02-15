@@ -7,10 +7,6 @@ module.exports ={
       uuid:
         description: "uuid of the sensortag to connect"
         type: "string"
-      timeout:
-        description: "Delay for request"
-        format: "number"
-        default: 60000
       interval:
         description: "Interval between requests"
         format: "number"
