@@ -10,16 +10,21 @@ module.exports = (env) ->
   class SensorTagPlugin extends env.plugins.Plugin
     init: (app, @framework, @config) =>
       deviceConfigDef = require("./device-config-schema")
+      @devices = []
 
       @framework.deviceManager.registerDeviceClass("SensorTagDevice", {
         configDef: deviceConfigDef.SensorTagDevice,
-        createCallback: (config) => new SensorTagDevice(config)
+        createCallback: (config) =>
+          @devices.push(config.uuid)
+          new SensorTagDevice(config)
       })
 
-      # Promise that is resolved when the connection is established
       @noble = require "noble"
       setInterval( =>
-        @noble.startScanning([],true)
+        if @devices?.length > 0
+          env.logger.debug "Scan for devices"
+          env.logger.debug @devices
+          @noble.startScanning([],true)
       , 10000)
 
       @noble.on 'discover', (peripheral) =>
@@ -30,6 +35,10 @@ module.exports = (env) ->
       @noble.on 'stateChange', (state) =>
         if state == 'poweredOn'
           @noble.startScanning([],true)
+
+    removeFromScan: (uuid) =>
+      env.logger.debug "Removing device "+uuid
+      @devices.splice @devices.indexOf(uuid), 1
 
   class SensorTagDevice extends env.devices.Sensor
     attributes:
@@ -78,17 +87,16 @@ module.exports = (env) ->
     connect: (peripheral) =>
       @peripheral = peripheral
       sensorTag = new SensorTag(peripheral)
-      if @connected == false
-        sensorTag.connect =>
-          connected = true
-          env.logger.debug "device #{@name} connected"
-          sensorTag.discoverServicesAndCharacteristics =>
-            env.logger.debug "launching read on device #{@name}"
+      sensorTag.connect =>
+        env.logger.debug "device #{@name} connected"
+        plugin.removeFromScan peripheral.uuid
+        sensorTag.discoverServicesAndCharacteristics =>
+          env.logger.debug "launching read on device #{@name}"
+          @readSensorTagData sensorTag
+          setInterval( =>
+            env.logger.debug "launching read for device #{@name} after #{@interval}"
             @readSensorTagData sensorTag
-            setInterval( =>
-              env.logger.debug "launching read for device #{@name} after #{@interval}"
-              @readSensorTagData sensorTag
-            , @interval)
+          , @interval)
 
     readSensorTagData: (sensorTag) => 
       sensorTag.on "simpleKeyChange", (left, right) =>
