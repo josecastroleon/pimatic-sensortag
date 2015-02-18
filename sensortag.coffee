@@ -15,7 +15,7 @@ module.exports = (env) ->
       @framework.deviceManager.registerDeviceClass("SensorTagDevice", {
         configDef: deviceConfigDef.SensorTagDevice,
         createCallback: (config) =>
-          @devices.push(config.uuid)
+          @addOnScan config.uuid
           new SensorTagDevice(config)
       })
 
@@ -35,6 +35,10 @@ module.exports = (env) ->
       @noble.on 'stateChange', (state) =>
         if state == 'poweredOn'
           @noble.startScanning([],true)
+
+    addOnScan: (uuid) =>
+      env.logger.debug "Adding device "+uuid
+      @devices.push uuid
 
     removeFromScan: (uuid) =>
       env.logger.debug "Removing device "+uuid
@@ -79,14 +83,20 @@ module.exports = (env) ->
       @peripheral = null
       @connected = false
       super()
-      plugin.once("discover-#{@uuid}", (peripheral) =>
+      plugin.on("discover-#{@uuid}", (peripheral) =>
         env.logger.debug "device #{@name} found"
-        @connect peripheral
+        if not @connected
+          @connected = true
+          @connect peripheral
       )
 
     connect: (peripheral) =>
       @peripheral = peripheral
       sensorTag = new SensorTag(peripheral)
+      sensorTag.on 'disconnect', =>
+        env.logger.debug "device #{@name} disconnected"
+        plugin.addOnScan @uuid
+        @connected = false
       sensorTag.connect =>
         env.logger.debug "device #{@name} connected"
         plugin.removeFromScan peripheral.uuid
