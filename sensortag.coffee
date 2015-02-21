@@ -15,34 +15,29 @@ module.exports = (env) ->
       @framework.deviceManager.registerDeviceClass("SensorTagDevice", {
         configDef: deviceConfigDef.SensorTagDevice,
         createCallback: (config) =>
-          @addOnScan config.uuid
+          @devices.push config.uuid
           new SensorTagDevice(config)
       })
-
-      @noble = require "noble"
-      setInterval( =>
-        if @devices?.length > 0
-          env.logger.debug "Scan for devices"
-          env.logger.debug @devices
-          @noble.startScanning([],true)
-      , 10000)
-
-      @noble.on 'discover', (peripheral) =>
-        if (peripheral.advertisement.localName == 'SensorTag' or peripheral.advertisement.localName == 'TI BLE Sensor Tag')
-          @noble.stopScanning()
-          @emit "discover-"+peripheral.uuid, peripheral
-
-      @noble.on 'stateChange', (state) =>
-        if state == 'poweredOn'
-          @noble.startScanning([],true)
+      
+      @framework.on "after init", =>
+        @ble = @framework.pluginManager.getPlugin 'ble'
+        if @ble?
+          @ble.registerName 'SensorTag'
+          @ble.registerName 'TI BLE Sensor Tag'
+          (@ble.addOnScan device for device in @devices)
+          @ble.on("discover", (peripheral) =>
+            @emit "discover-"+peripheral.uuid, peripheral
+          )
+        else
+          env.logger.warn "sensortag could not find ble. It will not be able to discover devices"
 
     addOnScan: (uuid) =>
       env.logger.debug "Adding device "+uuid
-      @devices.push uuid
+      @ble.addOnScan uuid
 
     removeFromScan: (uuid) =>
       env.logger.debug "Removing device "+uuid
-      @devices.splice @devices.indexOf(uuid), 1
+      @ble.removeFromScan uuid
 
   class SensorTagDevice extends env.devices.Sensor
     attributes:

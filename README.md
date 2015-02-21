@@ -5,7 +5,13 @@ Pimatic Plugin that retrieves some sensor data from TI Sensortag
 
 Configuration
 -------------
-Add the plugin to the plugin section:
+If you don't have the pimatic-ble plugin add it to the plugin section:
+
+    {
+      "plugin": "ble"
+    }
+
+Then add the plugin to the plugin section:
 
     {
       "plugin": "sensortag"
