@@ -4,7 +4,6 @@ module.exports = (env) ->
   assert = env.require 'cassert'
   
   SensorTag = require "sensortag"
-  noble = require "noble"
   events = require "events"
 
   class SensorTagPlugin extends env.plugins.Plugin
