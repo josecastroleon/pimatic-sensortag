@@ -3,6 +3,7 @@ module.exports ={
   SensorTagDevice: {
     title: "SensorTagTemperature config options"
     type: "object"
+    extensions: ["xLink", "xAttributeOptions"]
     properties:
       uuid:
         description: "uuid of the sensortag to connect"
