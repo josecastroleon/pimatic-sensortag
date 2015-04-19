@@ -72,7 +72,6 @@ module.exports = (env) ->
       @id = config.id
       @name = config.name
       @interval = config.interval
-      @timeout = config.timeout
       @uuid = config.uuid
       @peripheral = null
       @connected = false
