@@ -73,6 +73,7 @@ module.exports = (env) ->
       @name = config.name
       @interval = config.interval
       @uuid = config.uuid
+      @type = config.type
       @peripheral = null
       @connected = false
       super()
@@ -85,7 +86,10 @@ module.exports = (env) ->
 
     connect: (peripheral) =>
       @peripheral = peripheral
-      sensorTag = new SensorTag(peripheral)
+      sensorTag = switch @type
+        when 'CC2540' then new SensorTag.CC2540(peripheral)
+        when 'CC2650' then new SensorTag.CC2650(peripheral)
+        else null
       sensorTag.on 'disconnect', =>
         env.logger.debug "device #{@name} disconnected"
         plugin.addOnScan @uuid
@@ -108,13 +112,13 @@ module.exports = (env) ->
       sensorTag.notifySimpleKey =>
       sensorTag.enableBarometricPressure =>
         setTimeout(=>
-          sensorTag.readBarometricPressure (pressure) =>
+          sensorTag.readBarometricPressure (callback, pressure) =>
             @emit "pressure", Number pressure.toFixed(1)
             sensorTag.disableBarometricPressure
         , 1000)         
       sensorTag.enableHumidity =>
         setTimeout(=>
-          sensorTag.readHumidity (temperature, humidity) =>
+          sensorTag.readHumidity (callback, temperature, humidity) =>
             @emit "temperature", Number temperature.toFixed(1)
             @emit "humidity", Number humidity.toFixed(1)
             sensorTag.disableHumidity =>
