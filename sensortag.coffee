@@ -23,6 +23,8 @@ module.exports = (env) ->
         if @ble?
           @ble.registerName 'SensorTag'
           @ble.registerName 'TI BLE Sensor Tag'
+          @ble.registerName 'CC2650 SensorTag'
+          @ble.registerName 'SensorTag 2.0'
           (@ble.addOnScan device for device in @devices)
           @ble.on("discover", (peripheral) =>
             @emit "discover-"+peripheral.uuid, peripheral
