@@ -1,6 +1,5 @@
 module.exports = (env) ->
   Promise = env.require 'bluebird'
-  convict = env.require "convict"
   assert = env.require 'cassert'
   
   SensorTag = require "sensortag"
@@ -71,11 +70,11 @@ module.exports = (env) ->
     right: false
 
     constructor: (@config) ->
-      @id = config.id
-      @name = config.name
-      @interval = config.interval
-      @uuid = config.uuid
-      @type = config.type
+      @id = @config.id
+      @name = @config.name
+      @interval = @config.interval
+      @uuid = @config.uuid
+      @type = @config.type
       @peripheral = null
       @connected = false
       super()
